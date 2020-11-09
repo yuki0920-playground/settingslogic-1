@@ -15,6 +15,7 @@ class Settingslogic < Hash
     def get(key)
       parts = key.split('.')
       curs = self
+      # 先頭の要素を取り除き代入している
       while p = parts.shift
         curs = curs.send(p)
       end
@@ -76,9 +77,10 @@ class Settingslogic < Hash
 
       def create_accessor_for(key)
         return unless key.to_s =~ /^\w+$/  # could have "some-setting:" which blows up eval
+        # レシーバのインスタンスのスコープで評価している
+        # keyのreadアクセサを定義している
         instance_eval "def #{key}; instance.send(:#{key}); end"
       end
-
   end
 
   # Initializes a new settings object. You can initialize an object in any of the following ways:
@@ -95,6 +97,7 @@ class Settingslogic < Hash
     #puts "new! #{hash_or_file}"
     case hash_or_file
     when nil
+      # ENOENTは"Error No Entry"の略
       raise Errno::ENOENT, "No file specified as Settingslogic source"
     when Hash
       self.replace hash_or_file
@@ -171,11 +174,11 @@ class Settingslogic < Hash
   def symbolize_keys
 
     inject({}) do |memo, tuple|
-
+      # keyにレシーバーのはじめの要素を入れる
       k = (tuple.first.to_sym rescue tuple.first) || tuple.first
-
+      # valueにkeyのvalueもしくはレシーバの最後の要素を入れる
       v = k.is_a?(Symbol) ? send(k) : tuple.last # make sure the value is accessed the same way Settings.foo.bar works
-
+      # 返り値のmemoにはvalueがhashなら再帰的にsybolize_keyzを適用している
       memo[k] = v && v.respond_to?(:symbolize_keys) ? v.symbolize_keys : v #recurse for nested hashes
 
       memo
